@@ -48,10 +48,9 @@ def dfs(startState, goalState): # return the results as a list
 	alreadyVisitedStates = []
 	stack = [startState]
 	while stack:
-		alreadyVisitedStates.append(deepcopy(stack[-1]))#peek at the top of the stack
-		print('visited')
-		print(len(alreadyVisitedStates))
-		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates)
+		alreadyVisitedStates.append(deepcopy(stack[-1])) #peek at the top of the stack, add it to visited
+		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates) #expand the node to find the possible next state
+		
 		minValue = 1000 #arbitrarily large value. 
 		if not nextPossibleStates: # if there are no more possible states, dead end. Pop the stack.
 			stack.pop()
