@@ -27,9 +27,7 @@ def appendStateToListIfLegal(puzzleState, zeroPosition, newZeroPosition, listToA
 
 def expandNode(puzzleState, alreadyVisitedStates):
 	puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
-	#Generate a list of the next states, checking that they are legal, and that the state hasn't already been visited
 	nextStates = [] # initialize list of next States to be returned
-
 	if zeroPosition[0]-1>=0: #check if we can switch zero with UP
 		appendStateToListIfLegal(puzzleState, zeroPosition, (zeroPosition[0]-1, zeroPosition[1]), nextStates,alreadyVisitedStates)
 
@@ -44,26 +42,60 @@ def expandNode(puzzleState, alreadyVisitedStates):
 
 	return nextStates
 
-def dfs(startState, goalState): # return the results as a list
-	alreadyVisitedStates = []
+def getDFSSolution(startState, goalState): # return the results as a list
+	alreadyVisitedStates = [] #includes states
 	stack = [startState]
 	while stack:
+		if stack[-1] ==goalState:
+			return stack
 		alreadyVisitedStates.append(deepcopy(stack[-1])) #peek at the top of the stack, add it to visited
 		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates) #expand the node to find the possible next state
-		
-		minValue = 1000 #arbitrarily large value. 
-		if not nextPossibleStates: # if there are no more possible states, dead end. Pop the stack.
+		minValue = len(initialState[0])*len(initialState[0][0]) #set initial minValue to larger than largest on puzzle
+		if not nextPossibleStates: # Dead end reached. Pop the stack.
 			stack.pop()
 		else:
 			for tileMoved, puzzleState in nextPossibleStates:
 				puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
-				if puzzleState ==goalState: # if it is the goal state, return the stack
-					stack.append(deepcopy(puzzleState))
-					return stack
-				else: # if it is not the goal state, check if its the min, and push that one onto the stack
-					if tileMoved<minValue:
-						minValue = tileMoved
-						minMovedState = puzzleState
+				if tileMoved<minValue:
+					minValue = tileMoved
+					minMovedState = puzzleState
 			stack.append(deepcopy(minMovedState))
-	return 'goal not found'
+	return 'Ran DFS, goal not found'
+
+def constructBFSPathFromVisited(allVisitedStatesNParents, startState, goalState):
+	path = [] 
+	currentState = goalState
+	path.append(goalState)
+	while currentState != startState:
+		for stateAndParent in allVisitedStatesNParents[:]:
+			if stateAndParent[0] == currentState:
+				currentState= stateAndParent[1]
+				allVisitedStatesNParents.remove(stateAndParent)
+				path.insert(0,currentState) # insert into beginning of array
+	return path
+
+def getBFSSolution(startState, goalState):
+	alreadyVisitedStates = []
+	alreadyVisitedStatesNParents = []
+	queue = [(startState, None)] 
+	while queue:
+		currentTuple = deepcopy(queue[0])
+		alreadyVisitedStatesNParents.append(deepcopy(currentTuple))
+		if queue[0][0] ==goalState:
+			return constructBFSPathFromVisited(alreadyVisitedStatesNParents, startState, goalState)
+		
+		alreadyVisitedStates.append(deepcopy(currentTuple[0])) #peek at the front of the queue, add it to visited
+		nextPossibleStates = expandNode(currentTuple[0], alreadyVisitedStates) #expand the node to find the possible next state
+		if nextPossibleStates: # dead end has been reached, dequeue
+			tupleListToBeSorted = []
+			for tileMoved, puzzleState in nextPossibleStates:
+				puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
+				tupleListToBeSorted.append((tileMoved, deepcopy(puzzleState)))
+			tupleListToBeSorted.sort(key=lambda tup: tup[0]) # sort so that lower moves go first
+			for tileMoved, state in tupleListToBeSorted:
+				queue.append((deepcopy(state),deepcopy(currentTuple[0])))
+			#add the list to the visited list 
+		queue.pop(0) # dequeue what was just worked on. 
+	return 'Ran BFS, goal not found'
+
 
