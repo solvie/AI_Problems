@@ -10,7 +10,6 @@
 #
 # Solvie Lee 
 # McGill University 
-#
 
 from copy import deepcopy
 
@@ -52,12 +51,7 @@ def dfs(startState, goalState): # return the results as a list
 		alreadyVisitedStates.append(deepcopy(stack[-1]))#peek at the top of the stack
 		print('visited')
 		print(len(alreadyVisitedStates))
-		#print(alreadyVisitedStates)
-		#if len(alreadyVisitedStates)==20:
-		#	break
-		#print ('these')
 		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates)
-		# of the next possible states, check if there is the goal state. If so, push that onto the stack and return
 		minValue = 1000 #arbitrarily large value. 
 		if not nextPossibleStates: # if there are no more possible states, dead end. Pop the stack.
 			stack.pop()
