@@ -9,7 +9,7 @@
 # 4. Iterative Deepening
 #
 # Solvie Lee 
-# McGill University 
+# McGill University
 
 from copy import deepcopy
 
@@ -42,26 +42,6 @@ def expandNode(puzzleState, alreadyVisitedStates):
 
 	return nextStates
 
-def getDFSSolution(startState, goalState): # return the results as a list
-	alreadyVisitedStates = [] #includes states
-	stack = [startState]
-	while stack:
-		if stack[-1] ==goalState:
-			return stack
-		alreadyVisitedStates.append(deepcopy(stack[-1])) #peek at the top of the stack, add it to visited
-		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates) #expand the node to find the possible next state
-		minValue = len(initialState[0])*len(initialState[0][0]) #set initial minValue to larger than largest on puzzle
-		if not nextPossibleStates: # Dead end reached. Pop the stack.
-			stack.pop()
-		else:
-			for tileMoved, puzzleState in nextPossibleStates:
-				puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
-				if tileMoved<minValue:
-					minValue = tileMoved
-					minMovedState = puzzleState
-			stack.append(deepcopy(minMovedState))
-	return 'Ran DFS, goal not found'
-
 def constructBFSPathFromVisited(allVisitedStatesNParents, startState, goalState):
 	path = [] 
 	currentState = goalState
@@ -74,6 +54,7 @@ def constructBFSPathFromVisited(allVisitedStatesNParents, startState, goalState)
 				path.insert(0,currentState) # insert into beginning of array
 	return path
 
+# Breadth First Search
 def getBFSSolution(startState, goalState):
 	alreadyVisitedStates = []
 	alreadyVisitedStatesNParents = []
@@ -94,8 +75,54 @@ def getBFSSolution(startState, goalState):
 			tupleListToBeSorted.sort(key=lambda tup: tup[0]) # sort so that lower moves go first
 			for tileMoved, state in tupleListToBeSorted:
 				queue.append((deepcopy(state),deepcopy(currentTuple[0])))
-			#add the list to the visited list 
 		queue.pop(0) # dequeue what was just worked on. 
 	return 'Ran BFS, goal not found'
 
+#Depth First Search
+def getDFSSolution(startState, goalState): # return the results as a list
+	alreadyVisitedStates = [] #includes states
+	stack = [startState]
+	while stack:
+		if stack[-1] ==goalState:
+			return stack
+		alreadyVisitedStates.append(deepcopy(stack[-1])) #peek at the top of the stack, add it to visited
+		nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates) #expand the node to find the possible next state
+		minValue = len(initialState[0])*len(initialState[0][0]) #set initial minValue to larger than largest on puzzle
+		if not nextPossibleStates: # Dead end reached. Pop the stack.
+			stack.pop()
+		else:
+			for tileMoved, puzzleState in nextPossibleStates:
+				puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
+				if tileMoved<minValue:
+					minValue = tileMoved
+					minMovedState = puzzleState
+			stack.append(deepcopy(minMovedState))
+	return 'Ran DFS, goal not found'
+
+# Iterative Deepening Search
+def getIDSSolution(startState, goalState):
+	depthLimit =1
+	alreadyVisitedStates = [] #includes states
+	stack = [startState]
+	while True:
+		while stack:
+			if stack[-1] ==goalState:
+				return stack
+			alreadyVisitedStates.append(deepcopy(stack[-1])) #peek at the top of the stack, add it to visited
+			nextPossibleStates = expandNode(deepcopy(stack[-1]), alreadyVisitedStates) #expand the node to find the possible next state
+			minValue = len(initialState[0])*len(initialState[0][0]) #set initial minValue to larger than largest on puzzle
+			if not nextPossibleStates or len(stack) == depthLimit: # Dead end reached, OR the depth limit has been reached. Pop the stack.
+				stack.pop()
+			else:
+				for tileMoved, puzzleState in nextPossibleStates:
+					puzzleStateMatrix, zeroPosition = puzzleState[0], puzzleState[1]
+					if tileMoved<minValue:
+						minValue = tileMoved
+						minMovedState = puzzleState
+				stack.append(deepcopy(minMovedState))
+		# Reinitialize and increase depth limit
+		alreadyVisitedStates = []
+		stack = [startState] 
+		depthLimit+=1
+	return 'Ran IDS, goal not found'
 
