@@ -15,18 +15,16 @@ def findMaxReturnIndex(arrayOfTuples):
 	maxvar = arrayOfTuples[0][0]
 	maxtup = arrayOfTuples[0]
 	for tup in arrayOfTuples:
-		#print(tup)
 		if tup[1] > maxvar:
 			maxvar = tup[1]
 			maxtup = tup
-	print('max')
-	print(maxtup)
 	return maxtup
 
 
 #x min and xmax constrains the search to a certain domain
 def TwoDHillClimbing(step_size, startPoint, xmin, xmax):
 	x = startPoint
+	numsteps = 0
 	while True:
 		neighbors=[] #tuples with index, value
 		xleft = x-step_size
@@ -38,8 +36,9 @@ def TwoDHillClimbing(step_size, startPoint, xmin, xmax):
 		bestSuccessor = findMaxReturnIndex(neighbors)
 		y = applyEquation(x)
 		if bestSuccessor[1] <= y:
-			return (x,y)
+			return (round(x,2),round(y, 5), numsteps) #index, convergence value, numsteps
 		x = bestSuccessor[0]		
+		numsteps+=1
 	print('something went wrong')
 	return None
 
@@ -56,13 +55,34 @@ while x <= 10:
 	yvals.append(applyEquation(x))
 	i+=1
 
-plt.figure()
-plt.plot(xvals,yvals)
+#plt.figure()
+#plt.plot(xvals,yvals)
 plt.axis([0, 10, -1, 1])
 plt.xlabel('x')
 plt.ylabel('y')
 plt.title('Graph of function y = sin(x^2/2)/log_2(x+4)')
 #plt.savefig('functiongraph.svg')
 
-som = TwoDHillClimbing(0.01,2,0,10)
+
+startindex=0
+currentStep=0.01
+motherArray=[] #motherArray[i] indicates values for starting point = i
+while startindex <=10:
+	subArray = []
+	while currentStep <=0.1:
+		subArray.append(TwoDHillClimbing(currentStep, startindex,0,10))
+		currentStep+=0.01
+	startindex+=1
+	currentStep=0.01
+	motherArray.append(subArray)
+	print(startindex)
+print('motherarray 0')
+print(motherArray[2])
+
+#plt.figure()
+plt.plot(xvals,yvals)
+plt.xlabel('Steps to convergence')
+plt.ylabel('y')
+plt.title('Graph starting at 0')
+
 
