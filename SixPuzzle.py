@@ -30,16 +30,12 @@ def expandNode(puzzleState, alreadyVisitedStates):
 	nextStates = [] # initialize list of next States to be returned
 	if zeroPosition[0]-1>=0: #check if we can switch zero with UP
 		appendStateToListIfLegal(puzzleState, zeroPosition, (zeroPosition[0]-1, zeroPosition[1]), nextStates,alreadyVisitedStates)
-
 	if zeroPosition[0]+1<len(puzzleStateMatrix): #check if we can switch zero with DOWN,  len(puzzleStateMatrix)=numRows
 		appendStateToListIfLegal(puzzleState, zeroPosition, (zeroPosition[0]+1, zeroPosition[1]), nextStates,alreadyVisitedStates)
-
 	if zeroPosition[1]-1>=0: #check if we can switch zero with LEFT  len(puzzleStateMatrix)=numCols
 		appendStateToListIfLegal(puzzleState, zeroPosition, (zeroPosition[0], zeroPosition[1]-1), nextStates,alreadyVisitedStates)
-
 	if zeroPosition[1]+1<len(puzzleStateMatrix[0]): #check if we can switch zero with RIGHT
 		appendStateToListIfLegal(puzzleState, zeroPosition, (zeroPosition[0], zeroPosition[1]+1), nextStates,alreadyVisitedStates)
-
 	return nextStates
 
 def constructBFSPathFromVisited(allVisitedStatesNParents, startState, goalState):
@@ -64,7 +60,6 @@ def getBFSSolution(startState, goalState):
 		alreadyVisitedStatesNParents.append(deepcopy(currentTuple))
 		if queue[0][0] ==goalState:
 			return constructBFSPathFromVisited(alreadyVisitedStatesNParents, startState, goalState)
-		
 		alreadyVisitedStates.append(deepcopy(currentTuple[0])) #peek at the front of the queue, add it to visited
 		nextPossibleStates = expandNode(currentTuple[0], alreadyVisitedStates) #expand the node to find the possible next state
 		if nextPossibleStates: # dead end has been reached, dequeue
@@ -125,4 +120,12 @@ def getIDSSolution(startState, goalState):
 		stack = [startState] 
 		depthLimit+=1
 	return 'Ran IDS, goal not found'
+
+print('BFS & Uniform Cost search:')
+print(getBFSSolution(initialState, goalState))
+print('DFS:')
+print(getDFSSolution(initialState, goalState))
+print('IDS:')
+print(getIDSSolution(initialState, goalState))
+
 
