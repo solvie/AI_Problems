@@ -7,6 +7,7 @@
 
 import math
 import matplotlib.pyplot as plt
+import csv
 
 def applyEquation(x):
 	return math.sin(x*x/2.0)/math.log(x+4,2)
@@ -20,6 +21,15 @@ def findMaxReturnIndex(arrayOfTuples):
 			maxtup = tup
 	return maxtup
 
+def writeCompleteCsvTable(title, motherarray):
+	with open(title,'w') as csvfile:
+		fieldnames=['Start index', 'Step size', 'x', 'y', 'Steps to convergence']
+		writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+		writer.writeheader()
+		for i in range (0,len(motherarray)):
+			childarray = motherarray[i]
+			for positionTuple, stepTuple in childarray:
+				writer.writerow({'Start index': i ,'Step size': stepTuple[0] ,'x': positionTuple[0], 'y': positionTuple[1], 'Steps to convergence': stepTuple[1]})
 
 #x min and xmax constrains the search to a certain domain
 def TwoDHillClimbing(step_size, startPoint, xmin, xmax):
@@ -36,7 +46,7 @@ def TwoDHillClimbing(step_size, startPoint, xmin, xmax):
 		y = applyEquation(x)
 		bestSuccessor = findMaxReturnIndex(neighbors)
 		if bestSuccessor[1] <= y:
-			return (round(x,2),round(y, 5), numsteps) #index, convergence value, numsteps
+			return ((round(x,2),round(y, 5)), (step_size,numsteps))
 		x = bestSuccessor[0]		
 		numsteps+=1
 	print('something went wrong')
@@ -75,9 +85,12 @@ while currentIndex <=10:
 	currentIndex+=1
 	currentStep=0.01
 	motherArray.append(subArray)#tab me
-print(currentIndex)
 print('motherarray 0')
+print(motherArray[0])
 print(motherArray[1])
+writeCompleteCsvTable('allresults_hill-climbing.csv', motherArray)
+
+
 
 #plt.figure()
 plt.plot(xvals,yvals)
