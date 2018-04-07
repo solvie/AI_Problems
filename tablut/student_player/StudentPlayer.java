@@ -47,27 +47,12 @@ public class StudentPlayer extends TablutPlayer {
      * make decisions.
      */
     public Move chooseMove(TablutBoardState boardState) {
-    	return chooseRandomMoveWithSuddenDeath(boardState);
+    	return chooseTimidlyGreedyMove(boardState);
     }
     
 
-
-    private TablutMove chooseRandomMoveWithSuddenDeath(TablutBoardState bs) {
+    private TablutMove chooseTimidlyGreedyMove(TablutBoardState bs) { //adapted from GreedyTablutPlayer
     	List<TablutMove> options = bs.getAllLegalMoves();
-    	for (TablutMove move : options) {
-            TablutBoardState cloneBS = (TablutBoardState) bs.clone();
-            // Process that move, as if we actually made it happen.
-            cloneBS.processMove(move);
-            // If this move caused some capturing to happen, then do it! Greedy!
-            if (cloneBS.getWinner()==player_id) {
-            	return move;
-            }
-        }
-    	return options.get(rand.nextInt(options.size()));
-    }
-    
-    private TablutMove chooseGreedyMove(TablutBoardState bs) {//todo: don't clone?
-        List<TablutMove> options = bs.getAllLegalMoves();
 
         // Set an initial move as some random one.
         TablutMove bestMove = options.get(rand.nextInt(options.size()));
@@ -76,12 +61,11 @@ public class StudentPlayer extends TablutPlayer {
         int opponent = bs.getOpponent();
         int minNumberOfOpponentPieces = bs.getNumberPlayerPieces(opponent);
         boolean moveCaptures = false;
+        double evalFuncVal = 0;
 
         // Iterate over move options and evaluate them.
         for (TablutMove move : options) {
-        	//System.out.println("looking at options...");
-            // To evaluate a move, clone the boardState so that we can do modifications on
-            // it.
+            // To evaluate a move, clone the boardState so that we can do modifications on it.
             TablutBoardState cloneBS = (TablutBoardState) bs.clone();
 
             // Process that move, as if we actually made it happen.
@@ -89,15 +73,7 @@ public class StudentPlayer extends TablutPlayer {
 
             // Check how many opponent pieces there are now, maybe we captured some!
             int newNumberOfOpponentPieces = cloneBS.getNumberPlayerPieces(opponent);
-
-            // If this move caused some capturing to happen, then do it! Greedy!
-            if (newNumberOfOpponentPieces < minNumberOfOpponentPieces) {
-            	//System.out.println("lets be greedy!");
-                bestMove = move;
-                minNumberOfOpponentPieces = newNumberOfOpponentPieces;
-                moveCaptures = true;
-            }
-
+            
             /*
              * If we also want to check if the move would cause us to win, this works for
              * both! This will check if black can capture the king, and will also check if
@@ -105,47 +81,63 @@ public class StudentPlayer extends TablutPlayer {
              * winner will be set.
              */
             if (cloneBS.getWinner() == player_id) {
-                bestMove = move;
-                moveCaptures = true;
-                break;
+                return move;
             }
-        }
 
-        /*
-         * The king-functionality below could be included in the above loop to improve
-         * efficiency. But, this is written separately for the purpose of exposition to
-         * students.
-         */
+            // If this move caused some capturing to happen, look one more step ahead and see if the opponent might capture as a result.
+            if (newNumberOfOpponentPieces < minNumberOfOpponentPieces) {
+            	//TODO
+                bestMove = move;
+                minNumberOfOpponentPieces = newNumberOfOpponentPieces;
+                moveCaptures = true;
+            }
 
-        // If we are SWEDES we also want to check if we can get closer to the closest
-        // corner. Greedy!
-        // But let's say we'll only do this if we CANNOT do a capture.
-        if (player_id == TablutBoardState.SWEDE && !moveCaptures) {
-            Coord kingPos = bs.getKingPosition();
-            
-            //System.out.println("Whats king pos here theres a null bug :");
-           // bs.printBoard();
-            //System.out.println(kingPos);
-            // Don't do a move if it wouldn't get us closer than our current position.
-            int minDistance = Coordinates.distanceToClosestCorner(kingPos);
-
-            // Iterate over moves from a specific position, the king's position!
-            for (TablutMove move : bs.getLegalMovesForPosition(kingPos)) {
-                /*
-                 * Here it is not necessary to actually process the move on a copied boardState.
-                 * Note that it is more efficient NOT to copy the boardState. Consider this
-                 * during implementation...
-                 */
-                int moveDistance = Coordinates.distanceToClosestCorner(move.getEndPosition());
-                if (moveDistance < minDistance) {
-                    minDistance = moveDistance;
-                    bestMove = move;
-                }
+            if (player_id == TablutBoardState.SWEDE) { //if we can advance the king WITHOUT dying from it, do it. 
+            	TablutBoardState kingMovedBs = (TablutBoardState)bs.clone();
+            	kingMovedBs.processMove(move);
+            	double currentEval = computeEvaluationFunction(bs.getKingPosition(), kingMovedBs);
+            	if (currentEval>evalFuncVal) {
+            		evalFuncVal = currentEval;//update 
+            		bestMove = move;
+            	}
             }
         }
         return bestMove; 
-        }
+    }
     
+    //measures the goodness of a board state for a swede. Higher values is good.
+    //if it puts the king in danger of being eaten, returns 0 immediately
+    //if there's someone in the way of the king as a result of doing this, return 0
+    private double computeEvaluationFunction(Coord prevKingPos, TablutBoardState bs) {
+    	//is the king in danger of being eaten as a result of this move?
+        List<TablutMove> potentialEnemyMoves = bs.getAllLegalMoves();
+
+        for (TablutMove potentialEnemyMove : potentialEnemyMoves) {
+            TablutBoardState cloned = (TablutBoardState) bs.clone();
+        	cloned.processMove(potentialEnemyMove);
+        	if (cloned.getWinner()==TablutBoardState.MUSCOVITE) {
+        		return 0;
+        	}
+        }
+        
+    	Coord kingPos = bs.getKingPosition();
+
+    	//is there someone in the king's direct line of movement, closer to that corner? If so don't make the move.
+        HashSet<Coord> opponentCoords = bs.getOpponentPieceCoordinates();
+        for (Coord opponentpiece : opponentCoords) {
+        	if (BoardHelpers.isPieceBetweenKingAndCorner(opponentpiece, kingPos, BoardHelpers.closestCorner(kingPos)))
+        		return 0;
+        }
+        
+    	//Did the king get closer to the corner?
+    	double kingCloserBy = 0;
+        int minDistance = Coordinates.distanceToClosestCorner(kingPos);
+        int prevDistance  =Coordinates.distanceToClosestCorner(prevKingPos);
+        if (minDistance<prevDistance) {
+        	kingCloserBy = prevDistance-minDistance;
+        }
+        return kingCloserBy;
+    }
     
     
 }
