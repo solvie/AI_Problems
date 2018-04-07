@@ -53,18 +53,14 @@ public class StudentPlayer extends TablutPlayer {
     private TreeNode traceEnemyPath(TreeNode startNode, TablutBoardState currentBoardState) {
 		List<TreeNode> enemyMovePossibilities = startNode.getChildren(); //from current root.
 		if (enemyMovePossibilities.size()>0) {
-			System.out.println("\n\n Enemy moves that led to this point coulda been "+enemyMovePossibilities.size());
-			System.out.println("tree root chilren size is: "+treeRoot.getNumChildren());
+			//System.out.println("\n\n Enemy moves that led to this point coulda been "+enemyMovePossibilities.size());
+			//System.out.println("tree root chilren size is: "+treeRoot.getNumChildren());
 			for (TreeNode enemyMoveResult: enemyMovePossibilities) {
     			//System.out.println("candidate IS:");
     			//enemyMoveCand.getBoardState().printBoard();
     			//System.out.println("COMPARE me to now");
-
-    			if (BoardHelpers.areBoardsEqual(enemyMoveResult.getBoardState(), currentBoardState)) {
-        			System.out.println("\n\n \n\nNEW ROOT YALL ");
+    			if (BoardHelpers.areBoardsEqual(enemyMoveResult.getBoardState(), currentBoardState))
     				return enemyMoveResult;
-        			//break;
-    			}
     		}
 		}
     	return null;
@@ -82,11 +78,13 @@ public class StudentPlayer extends TablutPlayer {
     
     public TablutMove mcts(TablutBoardState boardState, boolean initialize) { //This is for our 30 second initialization
     	long timeoutval;
+		long startTime = System.currentTimeMillis();
+    	long currentTime = startTime;
     	if (initialize) {
-    		timeoutval = 2000; //short for test
+    		timeoutval = 20000; //short for test
     		treeRoot = new TreeNode(null, null, boardState);
     	} else {  
-    		timeoutval = 500; //short for test
+    		timeoutval = 1300; //short for test
     		TreeNode rootAfterEnemyMove = traceEnemyPath(treeRoot, boardState);
     		if (rootAfterEnemyMove!=null) {
     			treeRoot = rootAfterEnemyMove;
@@ -96,21 +94,22 @@ public class StudentPlayer extends TablutPlayer {
     		}
     		
     	}
-		long startTime = System.currentTimeMillis();
-    	long currentTime = startTime;
+
 		TreeNode currentNode = treeRoot;
  
     	while (currentTime - startTime<timeoutval) {
     		//1. SELECTION
     		currentNode = doSelection(treeRoot);
-    		
+
     		//2. EXPANSION, PLAYOUT, BACKPROP
 			TablutBoardState clonedboardstate = currentNode.cloneBoardState();
 
     		if (!currentNode.playedOut()) {
     			// If it hasn't been played out yet, play it out
-    			while (clonedboardstate.getWinner()==Board.NOBODY) //greedily
-    	    		clonedboardstate.processMove(chooseGreedyMove(clonedboardstate));
+    			while (clonedboardstate.getWinner()==Board.NOBODY) { //greedily
+    	    		clonedboardstate.processMove(chooseRandomMove(clonedboardstate));
+    	    		//clonedboardstate.processMove(chooseGreedyMove(clonedboardstate));
+    			}
   
     			// Backprop the result.
     			currentNode.backProp(clonedboardstate.getWinner()==player_id);
@@ -130,21 +129,34 @@ public class StudentPlayer extends TablutPlayer {
 	    	currentTime = System.currentTimeMillis();
     	}
     	
-    	System.out.println("Currently board looks like this, before we make our move");
+    	//System.out.println("Currently board looks like this, before we make our move");
     	treeRoot.getBoardState().printBoard();
-    	
+		System.out.println(System.currentTimeMillis() - startTime);
+		System.out.println("selecting child with best q");
+
 		TreeNode chosenNode = treeRoot.selectChildWithBestQ();
 		//chosenNode.getBoardState().printBoard();
-		System.out.println("WE WANT TO MOVE"+chosenNode.getParentMove().toPrettyString());
-		System.out.println("current time on record "+ currentTime);
-		System.out.println("actual current time " + System.currentTimeMillis());
-
+		//System.out.println("WE WANT TO MOVE"+chosenNode.getParentMove().toPrettyString());
+		//System.out.println("current time on record "+ currentTime);
+		//System.out.println("actual current time " + System.currentTimeMillis());
 		treeRoot = chosenNode;
+		//System.out.println("PRINTING TREE");
+		//treeRoot.printTree();
+		System.out.println(treeRoot.nodeToString());
+		System.out.println(System.currentTimeMillis() - startTime);
 		return chosenNode.getParentMove();
 
     }
     
+    private TablutMove chooseRandomMove(TablutBoardState bs) {
+    	List<TablutMove> options = bs.getAllLegalMoves();
+    	return options.get(rand.nextInt(options.size()));
+    }
 
+    private TablutMove chooseRandomMoveWithSuddenDeath(TablutBoardState bs) {
+    	List<TablutMove> options = bs.getAllLegalMoves();
+    	return options.get(rand.nextInt(options.size()));
+    }
     
     private TablutMove chooseGreedyMove(TablutBoardState bs) {//todo: don't clone?
         List<TablutMove> options = bs.getAllLegalMoves();
@@ -159,6 +171,7 @@ public class StudentPlayer extends TablutPlayer {
 
         // Iterate over move options and evaluate them.
         for (TablutMove move : options) {
+        	//System.out.println("looking at options...");
             // To evaluate a move, clone the boardState so that we can do modifications on
             // it.
             TablutBoardState cloneBS = (TablutBoardState) bs.clone();
@@ -171,6 +184,7 @@ public class StudentPlayer extends TablutPlayer {
 
             // If this move caused some capturing to happen, then do it! Greedy!
             if (newNumberOfOpponentPieces < minNumberOfOpponentPieces) {
+            	//System.out.println("lets be greedy!");
                 bestMove = move;
                 minNumberOfOpponentPieces = newNumberOfOpponentPieces;
                 moveCaptures = true;
@@ -201,9 +215,9 @@ public class StudentPlayer extends TablutPlayer {
         if (player_id == TablutBoardState.SWEDE && !moveCaptures) {
             Coord kingPos = bs.getKingPosition();
             
-            System.out.println("Whats king pos here theres a null bug :");
-            bs.printBoard();
-            System.out.println(kingPos);
+            //System.out.println("Whats king pos here theres a null bug :");
+           // bs.printBoard();
+            //System.out.println(kingPos);
             // Don't do a move if it wouldn't get us closer than our current position.
             int minDistance = Coordinates.distanceToClosestCorner(kingPos);
 
