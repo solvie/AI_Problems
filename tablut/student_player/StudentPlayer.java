@@ -3,13 +3,21 @@ package student_player;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import boardgame.Board;
 import boardgame.Move;
@@ -24,8 +32,8 @@ public class StudentPlayer extends TablutPlayer {
 	TreeNode prevNode; 
 	
 	private Random rand = new Random(194753); //arbitrary seed
-	//ExecutorService service = Executors.newSingleThreadExecutor();
-    /**
+	private static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool();
+	/**
      * You must modify this constructor to return your student number. This is
      * important, because this is what the code that runs the competition uses to
      * associate you with your agent. The constructor should do nothing else.
@@ -41,9 +49,9 @@ public class StudentPlayer extends TablutPlayer {
      */
     public Move chooseMove(TablutBoardState boardState) {
     	if (boardState.getTurnNumber()<1) {
-    		return mcts(boardState, true);
+    		return tryMcts(boardState, true);
     	}else {
-    		TablutMove move = mcts(boardState, false);
+    		TablutMove move = tryMcts(boardState, false);
     		return move;
     	}
     }
@@ -79,12 +87,40 @@ public class StudentPlayer extends TablutPlayer {
 		return retVal;
     }
     
+    private static <T> T timedCall(FutureTask<T> task, long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+        THREAD_POOL.execute(task);
+        return task.get(timeout, timeUnit);
+    }
+    
+    public TablutMove tryMcts(final TablutBoardState boardState, final boolean initialize) {
+        FutureTask<TablutMove> task = new FutureTask<TablutMove>(new Callable<TablutMove>() {
+            public TablutMove call() throws Exception {
+                    return mcts(boardState, initialize);
+            }
+        });
+    	try {
+    		TablutMove returnVal;
+    		if (initialize) {
+    			returnVal = timedCall(task, 2000, TimeUnit.MILLISECONDS);
+    		} else {
+                returnVal = timedCall(task, 1200, TimeUnit.MILLISECONDS);
+
+    		}
+            return returnVal;
+        } catch (Exception e) {
+                e.printStackTrace();
+                task.cancel(true);
+                System.out.println("timed out or exception occurred, choosing random");
+                return chooseRandomMove(boardState);
+        }
+    }
+    
     public TablutMove mcts(TablutBoardState boardState, boolean initialize) { //This is for our 30 second initialization
     	long timeoutval;
 		long startTime ;
     	long currentTime ;
     	if (initialize) {
-    		timeoutval = 10000; //short for test (AND BECAUSE OF MEMORY)
+    		timeoutval = 1500; //short for test (AND BECAUSE OF MEMORY)
     		treeRoot = new TreeNode(null, null, boardState);
     		startTime = System.currentTimeMillis();
     		currentTime = startTime;
@@ -96,7 +132,7 @@ public class StudentPlayer extends TablutPlayer {
     		if (rootAfterEnemyMove!=null) {
     			treeRoot = rootAfterEnemyMove;
     		} else {
-    			System.out.println("\n\n THIS AINT GREAT, enemy move didn't exist, we're gonna have to start over");
+    			System.out.println("\n\n THIS AINT GREAT, enemy move didn't exist in children, we're gonna have to start over");
         		treeRoot = new TreeNode(null, null, boardState);
     		}
     		
@@ -107,54 +143,25 @@ public class StudentPlayer extends TablutPlayer {
     	while (currentTime - startTime<timeoutval) {
     		//1. SELECTION
     		TreeNode currentNode = doSelection(treeRoot);
-//			System.out.println(System.nanoTime() - startTime);
-//			System.out.println("time after select");
     		//2. EXPANSION, PLAYOUT, BACKPROP
 			TablutBoardState clonedboardstate = currentNode.cloneBoardState();
 
     		if (!currentNode.playedOut()) {
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time before playout");
-    			boolean timeoutWarning= false;
     			// If it hasn't been played out yet, play it out
     			
     			while (clonedboardstate.getWinner()==Board.NOBODY) { //greedily
-    	    		if(initialize)
-    	    	    	currentTime = System.currentTimeMillis();
-    	        		else currentTime = System.nanoTime();
-    				if (currentTime - startTime>timeoutval) {
-//    	    			System.out.println(System.nanoTime() - startTime);
-    					System.out.println("TIMEOUT WARNING");
-    					timeoutWarning = true;
-    					break;
-    				}
     				TablutMove move = chooseRandomMove(clonedboardstate);
-//	    			System.out.println(System.nanoTime() - startTime);
-//					System.out.println("time after choosing random move");
     				
     				//TablutMove move = chooseRandomMoveWithSuddenDeath(clonedboardstate);
     	    		clonedboardstate.processMove(move);
-//	    			System.out.println(System.nanoTime() - startTime);
-//					System.out.println("time after processing move");
-        			//System.out.println(System.nanoTime() - startTime);
-        			//System.out.println("time after processing one move");
     	    		//clonedboardstate.processMove(chooseGreedyMove(clonedboardstate));
     			}
-    			if (timeoutWarning) break;
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time after playout");
     			
     			// Backprop the result.
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time before backprop ");
     			currentNode.backProp(clonedboardstate.getWinner()==player_id);
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time after backprop");
     			
     		} else {// if it has already been played out once, expand its children. 
     			//expand children
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time before expanding children");
     			List<TablutMove> movesToGenerateChildrenFrom = clonedboardstate.getAllLegalMoves();
     			currentNode.setNumChildren(movesToGenerateChildrenFrom.size());
     			
