@@ -64,6 +64,14 @@ public class TreeNode {
 		return false;
 	}
 	
+	public TreeNode selectWinningChild(int playerid) {
+		for (TreeNode child: children) {
+			if (child.getBoardState().getWinner()==playerid)
+				return child;
+		}
+		return null;
+	}
+	
 	/**
 	 * 
 	 * @returns the one with the highest Q value, OR as soon as it finds one with inf.
@@ -91,7 +99,7 @@ public class TreeNode {
 	}
 	
 	public void addChild(TablutBoardState bs, TablutMove parentMove) {
-		TreeNode child = new TreeNode(this, parentMove, (TablutBoardState)bs.clone());
+		TreeNode child = new TreeNode(this, parentMove, bs);//assumes the bs being fed is already a cloned one
 		this.children.add(child);
 	}
 	
@@ -112,5 +120,23 @@ public class TreeNode {
 	
 	public int getNumChildren() {
 		return this.numChildren;
+	}
+	
+	public String nodeToString() {
+		String retval= String.format("\nwins: %d \n plays: %d \n ",(int) this.numWins, (int)this.numActionsTaken);
+		retval = retval+"\n Parent move: "+this.parentMove.toPrettyString();
+		retval = retval+"\n Board state:";
+		//retval = retval+"\n "
+		return retval;
+	}
+	
+	public void printTree() {
+		System.out.println("---");
+		System.out.println(this.nodeToString());
+		System.out.println("---");
+		this.boardstate.printBoard();
+		for (TreeNode child: children) {
+			child.printTree();
+		}
 	}
 }

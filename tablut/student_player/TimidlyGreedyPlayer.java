@@ -3,6 +3,8 @@ package student_player;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+
+import boardgame.Board;
 import boardgame.Move;
 import coordinates.*;
 import tablut.TablutBoardState;
@@ -10,7 +12,7 @@ import tablut.TablutMove;
 import tablut.TablutPlayer;
 
 /** A player file submitted by a student. */
-public class StudentPlayer extends TablutPlayer {
+public class TimidlyGreedyPlayer extends TablutPlayer {
 	
 	private Random rand = new Random(194753); //arbitrary seed
 	/**
@@ -18,7 +20,7 @@ public class StudentPlayer extends TablutPlayer {
      * important, because this is what the code that runs the competition uses to
      * associate you with your agent. The constructor should do nothing else.
      */
-    public StudentPlayer() {
+    public TimidlyGreedyPlayer() {
         super("260577764");
     }
 

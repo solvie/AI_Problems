@@ -29,10 +29,9 @@ import tablut.TablutPlayer;
 /** A player file submitted by a student. */
 public class MCTSPlayer extends TablutPlayer {
 	TreeNode treeRoot;
-	TreeNode prevNode; 
 	
 	private Random rand = new Random(194753); //arbitrary seed
-	private static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool();
+	private static final ExecutorService THREAD_POOL = Executors.newSingleThreadExecutor();
 	/**
      * You must modify this constructor to return your student number. This is
      * important, because this is what the code that runs the competition uses to
@@ -101,9 +100,9 @@ public class MCTSPlayer extends TablutPlayer {
     	try {
     		TablutMove returnVal;
     		if (initialize) {
-    			returnVal = timedCall(task, 2000, TimeUnit.MILLISECONDS);
+    			returnVal = timedCall(task, 10000, TimeUnit.MILLISECONDS);
     		} else {
-                returnVal = timedCall(task, 1200, TimeUnit.MILLISECONDS);
+                returnVal = timedCall(task, 1800, TimeUnit.MILLISECONDS);
 
     		}
             return returnVal;
@@ -121,14 +120,14 @@ public class MCTSPlayer extends TablutPlayer {
 		long startTime ;
     	long currentTime ;
     	if (initialize) {
-    		timeoutval = 1500; //short for test (AND BECAUSE OF MEMORY)
+    		timeoutval = 8000; //short for test (AND BECAUSE OF MEMORY)
     		treeRoot = new TreeNode(null, null, boardState);
     		startTime = System.currentTimeMillis();
     		currentTime = startTime;
     	} else {  
     		startTime = System.nanoTime();
     		currentTime = startTime;
-    		timeoutval = 1000000000; //short for test
+    		timeoutval = 1500000000; //short for test
     		TreeNode rootAfterEnemyMove = traceEnemyPath(treeRoot, boardState);
     		if (rootAfterEnemyMove!=null) {
     			treeRoot = rootAfterEnemyMove;
