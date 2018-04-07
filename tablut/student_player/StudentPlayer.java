@@ -32,7 +32,6 @@ public class StudentPlayer extends TablutPlayer {
 	TreeNode prevNode; 
 	
 	private Random rand = new Random(194753); //arbitrary seed
-	private static final ExecutorService THREAD_POOL = Executors.newCachedThreadPool();
 	/**
      * You must modify this constructor to return your student number. This is
      * important, because this is what the code that runs the competition uses to
@@ -48,163 +47,10 @@ public class StudentPlayer extends TablutPlayer {
      * make decisions.
      */
     public Move chooseMove(TablutBoardState boardState) {
-    	if (boardState.getTurnNumber()<1) {
-    		return tryMcts(boardState, true);
-    	}else {
-    		TablutMove move = tryMcts(boardState, false);
-    		return move;
-    	}
+    	return chooseRandomMoveWithSuddenDeath(boardState);
     }
     
-    /**
-     * follow the tree down to after the enemy plays, return the result.
-     * 
-     * @return
-     */
-    private TreeNode traceEnemyPath(TreeNode startNode, TablutBoardState currentBoardState) {
-		List<TreeNode> enemyMovePossibilities = startNode.getChildren(); //from current root.
-		if (enemyMovePossibilities.size()>0) {
-			//System.out.println("\n\n Enemy moves that led to this point coulda been "+enemyMovePossibilities.size());
-			//System.out.println("tree root chilren size is: "+treeRoot.getNumChildren());
-			for (TreeNode enemyMoveResult: enemyMovePossibilities) {
-    			//System.out.println("candidate IS:");
-    			//enemyMoveCand.getBoardState().printBoard();
-    			//System.out.println("COMPARE me to now");
-    			if (BoardHelpers.areBoardsEqual(enemyMoveResult.getBoardState(), currentBoardState))
-    				return enemyMoveResult;
-    		}
-		}
-    	return null;
-    }
-    
-    private TreeNode doSelection(TreeNode root) {
-    	TreeNode retVal = root; //initialize as root
-		while(true) { //while we haven't reached a leaf
-			if (retVal.isLeaf()) break;
-			TreeNode selectedChild = retVal.selectChildWithBestQ();
-			retVal = selectedChild;
-		}
-		return retVal;
-    }
-    
-    private static <T> T timedCall(FutureTask<T> task, long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
-        THREAD_POOL.execute(task);
-        return task.get(timeout, timeUnit);
-    }
-    
-    public TablutMove tryMcts(final TablutBoardState boardState, final boolean initialize) {
-        FutureTask<TablutMove> task = new FutureTask<TablutMove>(new Callable<TablutMove>() {
-            public TablutMove call() throws Exception {
-                    return mcts(boardState, initialize);
-            }
-        });
-    	try {
-    		TablutMove returnVal;
-    		if (initialize) {
-    			returnVal = timedCall(task, 2000, TimeUnit.MILLISECONDS);
-    		} else {
-                returnVal = timedCall(task, 1200, TimeUnit.MILLISECONDS);
 
-    		}
-            return returnVal;
-        } catch (Exception e) {
-                e.printStackTrace();
-                task.cancel(true);
-                System.out.println("timed out or exception occurred, choosing random");
-                return chooseRandomMove(boardState);
-        }
-    }
-    
-    public TablutMove mcts(TablutBoardState boardState, boolean initialize) { //This is for our 30 second initialization
-    	long timeoutval;
-		long startTime ;
-    	long currentTime ;
-    	if (initialize) {
-    		timeoutval = 1500; //short for test (AND BECAUSE OF MEMORY)
-    		treeRoot = new TreeNode(null, null, boardState);
-    		startTime = System.currentTimeMillis();
-    		currentTime = startTime;
-    	} else {  
-    		startTime = System.nanoTime();
-    		currentTime = startTime;
-    		timeoutval = 1000000000; //short for test
-    		TreeNode rootAfterEnemyMove = traceEnemyPath(treeRoot, boardState);
-    		if (rootAfterEnemyMove!=null) {
-    			treeRoot = rootAfterEnemyMove;
-    		} else {
-    			System.out.println("\n\n THIS AINT GREAT, enemy move didn't exist in children, we're gonna have to start over");
-        		treeRoot = new TreeNode(null, null, boardState);
-    		}
-    		
-    	}
-
-		 //currentNode = treeRoot;
- 
-    	while (currentTime - startTime<timeoutval) {
-    		//1. SELECTION
-    		TreeNode currentNode = doSelection(treeRoot);
-    		//2. EXPANSION, PLAYOUT, BACKPROP
-			TablutBoardState clonedboardstate = currentNode.cloneBoardState();
-
-    		if (!currentNode.playedOut()) {
-    			// If it hasn't been played out yet, play it out
-    			
-    			while (clonedboardstate.getWinner()==Board.NOBODY) { //greedily
-    				TablutMove move = chooseRandomMove(clonedboardstate);
-    				
-    				//TablutMove move = chooseRandomMoveWithSuddenDeath(clonedboardstate);
-    	    		clonedboardstate.processMove(move);
-    	    		//clonedboardstate.processMove(chooseGreedyMove(clonedboardstate));
-    			}
-    			
-    			// Backprop the result.
-    			currentNode.backProp(clonedboardstate.getWinner()==player_id);
-    			
-    		} else {// if it has already been played out once, expand its children. 
-    			//expand children
-    			List<TablutMove> movesToGenerateChildrenFrom = clonedboardstate.getAllLegalMoves();
-    			currentNode.setNumChildren(movesToGenerateChildrenFrom.size());
-    			
-    			//add all the children. don't play them out yet. 
-    			for (TablutMove move: movesToGenerateChildrenFrom) {
-    				TablutBoardState playedstate = currentNode.cloneBoardState();
-    				playedstate.processMove(move);
-    				currentNode.addChild(playedstate, move);
-    			}
-//    			System.out.println(System.nanoTime() - startTime);
-//    			System.out.println("time after expanding children");
-    		}
-    		if(initialize)
-	    	currentTime = System.currentTimeMillis();
-    		else currentTime = System.nanoTime();
-    	}
-    	
-    	//System.out.println("Currently board looks like this, before we make our move");
-    	treeRoot.getBoardState().printBoard();
-//		System.out.println(System.nanoTime() - startTime);
-//		System.out.println("selecting child with best q");
-
-		TreeNode chosenNode;
-		TreeNode winner = treeRoot.selectWinningChild(player_id);
-		if (winner!=null) chosenNode = winner;
-		else chosenNode= treeRoot.selectChildWithBestQ();
-		//chosenNode.getBoardState().printBoard();
-		//System.out.println("WE WANT TO MOVE"+chosenNode.getParentMove().toPrettyString());
-		//System.out.println("current time on record "+ currentTime);
-		//System.out.println("actual current time " + System.currentTimeMillis());
-		treeRoot = chosenNode;
-		//System.out.println("PRINTING TREE");
-		//treeRoot.printTree();
-		System.out.println(treeRoot.nodeToString());
-		System.out.println(currentTime - startTime);
-		return chosenNode.getParentMove();
-
-    }
-    
-    private TablutMove chooseRandomMove(TablutBoardState bs) {
-    	List<TablutMove> options = bs.getAllLegalMoves();
-    	return options.get(rand.nextInt(options.size()));
-    }
 
     private TablutMove chooseRandomMoveWithSuddenDeath(TablutBoardState bs) {
     	List<TablutMove> options = bs.getAllLegalMoves();
